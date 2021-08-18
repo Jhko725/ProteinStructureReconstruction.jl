@@ -3,6 +3,16 @@ uuid = "5385f0e0-ec4e-4a95-9b2e-41751abe3bf2"
 authors = ["Joon-Hyuk Ko <jhko725@seas.harvard.edu> and contributors"]
 version = "0.1.0"
 
+[deps]
+FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
+GeometryBasics = "5c1252a2-5f33-56bf-86c9-59e7332b4326"
+HDF5 = "f67ccb44-e63f-5c2f-98bd-6dc0ccc4ba2f"
+Images = "916415d5-f1e6-5110-898d-aaa5f9f070e0"
+NPZ = "15e1cf62-19b3-5cfa-8e77-841668bca605"
+OMETIFF = "2d0ec36b-e807-5756-994b-45af29551fcf"
+StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
+TiffImages = "731e570b-9d59-4bfa-96dc-6df516fadf69"
+
 [compat]
 julia = "1.6"
 
