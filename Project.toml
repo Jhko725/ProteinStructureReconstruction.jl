@@ -14,6 +14,7 @@ StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 TiffImages = "731e570b-9d59-4bfa-96dc-6df516fadf69"
 
 [compat]
+Images = "0.24"
 julia = "1.6"
 
 [extras]
