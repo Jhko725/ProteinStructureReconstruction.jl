@@ -1,7 +1,7 @@
 #%%
 import numpy as np
 from aicsimageio import AICSImage
-from aicsimageio.writers import OmeTiffWriter
+
 
 czi_file = AICSImage('./Data/Fed_X63_Z3_SIM.czi')
 dim_order = 'CZYX'
