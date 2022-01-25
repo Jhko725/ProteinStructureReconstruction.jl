@@ -12,7 +12,7 @@ using NearestNeighbors
 using ProgressMeter
 ##
 filepath = "./Data/STORM/desmin_alphaactinin_600nm.csv"
-localization_df = DataFrame(CSV.File(filepath))
+const localization_df = DataFrame(CSV.File(filepath))
 ##
 function subset_xy_bounding_box(localization_df::DataFrame, xlim, ylim)
     selection_criteria_x = (xlim[1] .< localization_df.x .< xlim[2])
@@ -45,31 +45,75 @@ function point_to_set_correlation(point_coordinates, set_coordinates, Δr)
 
     point_to_set_hist = fit(Histogram, point_to_set_dists, r, closed = :left)
     return r[1:end-1], point_to_set_hist.weights
+end
 ##
-import RecursiveArrayTools: VectorOfArray
-using Clustering
+function xy_region_to_point_to_set_distances(x_limit::Tuple{N, N}, y_limit::Tuple{N, N}, localization_df::DataFrame) where {N<:Real}
+    df = subset_xy_bounding_box(localization_df, x_limit, y_limit)
+    df_list =  split_dataframe_per_probe(df)
+    point_clouds = pointcloud_from_dataframe.(df_list)
 
-point_matrix = reshape(reinterpret(Float32, point_clouds[1]), (3, length(point_clouds[1])))
+    set_tree = KDTree(point_clouds[2])
+    _, point_to_set_dist = nn(set_tree, point_clouds[1])
+    return point_to_set_dist
+end
 ##
-point_clouds[1][1] == point_matrix[:, 1]
 
-#size(point_matrix)
 ##
-clustering_result = dbscan(point_matrix, 5, min_cluster_size = 2)
-##
-VectorOfArray isa AbstractMatrix
-##
+xlim, ylim = (25000, 30000), (10000, 15000)
 import StatsBase: fit, Histogram
 bin_size = 20
-point_set_dist = desmin_pt_alphaactinin_set_dist
-distances = collect(0.0:bin_size:maximum(point_set_dist)+bin_size)
+point_set_dist = xy_region_to_point_to_set_distances((25000, 30000), (10000, 15000), localization_df)
+distances = collect(0.0:bin_size:(maximum(point_set_dist)+bin_size))
 h = fit(Histogram, point_set_dist, distances, closed=:left)
+##
+import StatsBase: fit, Histogram
+function point_to_set_correlation(point_to_set_distances::Vector{N}, bin_size::N) where {N<:Number}
+    distances = collect(0.0:bin_size:(maximum(point_to_set_distances)+bin_size))
+    h = fit(Histogram, point_to_set_distances, distances, closed=:left)
+    return distances[1:end-1], h.weights
+end
 ##
 let 
     fig = Figure(resolution = (1200, 600))
     ax1 = GLMakie.Axis(fig[1, 1], title = "Point(desmin)-to-Set(α-actinin) correlation function: Δr = $(bin_size)nm; x ∈ $(Tuple(xlim./1000)) μm; y ∈ $(Tuple(ylim./1000)) μm", xlabel = "Distance (nm)", ylabel = "Correlation (a.u.)")
     #ax2 = GLMakie.Axis(fig[1, 2], yscale = log10, title = "Point(desmin)-to-Set(α-actinin) correlation function (Δr = $(bin_size)nm)", xlabel = "Distance (pixels)", ylabel = "Correlation (a.u.)")
     scatterlines!(ax1, distances[1:end-1], h.weights)
+    ax1.xticks = LinearTicks(10)
+    #scatterlines!(ax2, distances[1:end-1], h.weights)
+    fig
+end
+##
+x_lims = [(5000, 10000), (10000, 15000), (15000, 20000), (20000, 25000), (25000, 30000), (30000, 35000),
+(0000, 5000), (5000, 10000), (10000, 15000), (15000, 20000), (20000, 25000), (25000, 30000), (30000, 35000)]
+y_lims = [(5000, 10000), (7500, 12500), (2500, 7500), (7500, 12500), (7500, 12500), (10000, 15000),
+(25000, 30000), (27500, 32500), (30000, 35000), (30000, 35000), (27500, 32500), (30000, 35000), (27500, 32500)]
+
+point_set_dist_list = @showprogress [xy_region_to_point_to_set_distances(x_lim, y_lim, localization_df) for (x_lim, y_lim) in zip(x_lims, y_lims)]
+##
+bin_size = 10.0f0
+p_to_s_corr_list = @showprogress [point_to_set_correlation(p_t_s_dist, bin_size) for p_t_s_dist in point_set_dist_list]
+##
+let 
+    fig = Figure(resolution = (1200, 600))
+    ax1 = GLMakie.Axis(fig[1, 1], title = "Point(desmin)-to-Set(α-actinin) correlation function: Δr = $(bin_size)nm", xlabel = "Distance (nm)", ylabel = "Correlation (a.u.)")
+    #ax2 = GLMakie.Axis(fig[1, 2], yscale = log10, title = "Point(desmin)-to-Set(α-actinin) correlation function (Δr = $(bin_size)nm)", xlabel = "Distance (pixels)", ylabel = "Correlation (a.u.)")
+    @showprogress for (r, corr) in p_to_s_corr_list
+        lines!(ax1, r, corr)
+    end
+    ax1.xticks = LinearTicks(10)
+    #scatterlines!(ax2, distances[1:end-1], h.weights)
+    fig
+end
+##
+total_dists = cat(point_set_dist_list..., dims = 1)
+total_corr = point_to_set_correlation(total_dists, bin_size)
+let 
+    fig = Figure(resolution = (1200, 600))
+    ax1 = GLMakie.Axis(fig[1, 1], title = "Point(desmin)-to-Set(α-actinin) correlation function: Δr = $(bin_size)nm", xlabel = "Distance (nm)", ylabel = "Correlation (a.u.)")
+    #ax2 = GLMakie.Axis(fig[1, 2], yscale = log10, title = "Point(desmin)-to-Set(α-actinin) correlation function (Δr = $(bin_size)nm)", xlabel = "Distance (pixels)", ylabel = "Correlation (a.u.)")
+    
+    lines!(ax1, total_corr...)
+    
     ax1.xticks = LinearTicks(10)
     #scatterlines!(ax2, distances[1:end-1], h.weights)
     fig

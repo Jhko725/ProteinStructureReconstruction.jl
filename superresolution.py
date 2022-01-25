@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
-from logging import CRITICAL
+from collections.abc import Sequence
 from typing import Tuple, Optional
 from copy import deepcopy
 
@@ -15,7 +15,7 @@ class SpatialUnit(Enum):
     M = "meters"
 
 @dataclass
-class SIM_3D_Data:
+class SIM_3D_Data(Sequence):
     """Dataclass to store 3D Structured Illumination Microscopy(SIM) data
     Note that the dimensions are in z, y, x order if not specified otherwise"""
     data: np.array 
@@ -23,6 +23,15 @@ class SIM_3D_Data:
     unit: SpatialUnit = SpatialUnit.PXL
     name: str = None
 
+    # Implement the Sequence protocol
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        indexed_data = self.data[idx]
+        return SIM_3D_Data(indexed_data, self.scale, self.unit, self.name)
+
+    # For ergonomics
     @property
     def shape(self):
         return self.data.shape
