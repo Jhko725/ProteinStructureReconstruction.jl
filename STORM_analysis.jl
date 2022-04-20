@@ -45,13 +45,30 @@ function pointcloud_from_dataframe2d(localization_df::DataFrame)
     point_cloud = @inbounds @views [SVector{2, Float32}(localization_df[i, [:x, :y]]...) for i = 1:size(localization_df)[1]]
     return point_cloud
 end
+
 ##
-xlim, ylim = (31000, 36000), (10000, 15000)
+xlim, ylim = (0, 5000), (25500, 30500)
 df = subset_xy_bounding_box(localization_df, xlim, ylim)
 df_list =  split_dataframe_per_probe(df)
 point_clouds = pointcloud_from_dataframe2d.(df_list)
 ##
-length(point_clouds[2])/3
+scatter(point_clouds[2])
+##
+let
+    fig = Figure()
+    df_list = split_dataframe_per_probe(localization_df)
+    point_clouds = pointcloud_from_dataframe2d.(df_list)
+    colors = [:red, :green]
+    ax = Axis(fig[1, 1], aspect = 1)
+    for i in 1:length(df_list)
+        
+        scatter!(ax, point_clouds[i], color = colors[i], markersize = 1, transparency = true)
+    end
+
+    fig
+end
+##
+
 ##
 let
     points = pointcloud_from_dataframe.(df_list)[2]
@@ -61,14 +78,15 @@ let
     Colorbar(fig[1, 2], sc)
     fig
 end
-scatter(point_clouds[2])
+##
+
 ##
 using Clustering
 import MultivariateStats: PCA, fit, eigvecs
 import Statistics.mean
 ##
 
-ptc = PointCloud(point_clouds[1])
+ptc = PointCloud(point_clouds[2])
 ##
 
 ##
@@ -106,7 +124,7 @@ let
     ax = Axis(fig[1, 1], aspect = 1)
     scatter!(ax, point_clouds[2], color = :lightgray, markersize = 5)
     points = to_abstractmatrix(point_clouds[2])
-    clusters = dbscan(points, 400, min_cluster_size = 1000, min_neighbors = 3)
+    clusters = dbscan(points, 300, min_cluster_size = 1000, min_neighbors = 7)
     for c in clusters
         c_points = cluster_coords(point_clouds[2], c)
         scatter!(ax, c_points, markersize = 5)
@@ -122,7 +140,29 @@ let
     current_figure()
    
 end
+##
+let 
+    import PyCall
+    import ColorSchemes: colorschemes
+    hdbscan = PyCall.pyimport("hdbscan")
+    clusterer = hdbscan.HDBSCAN(min_cluster_size = 1000, min_samples = 10)
+    points = to_abstractmatrix(point_clouds[2]) |> transpose
+    output = clusterer.fit(points)
 
+    fig = Figure()
+    ax = Axis(fig[1, 1], aspect = 1, xlabel = "x (nm)", ylabel = "y (nm)", title = "Clustering results for x ∈ $xlim, y ∈ $ylim")
+    cluster_labels = output.labels_ .+ 1
+    for i in unique(cluster_labels)
+        clustered = point_clouds[2][cluster_labels .== i]
+        if i == 0
+            scatter!(ax, clustered, color = :gray, markersize = 2)
+        else
+            color = colorschemes[:glasbey_hv_n256][i]
+            scatter!(ax, clustered, markersize = 3)
+        end
+    end
+    fig
+end
 ##
 let 
     fig = Figure()
