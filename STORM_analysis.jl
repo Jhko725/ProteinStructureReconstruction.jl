@@ -15,20 +15,12 @@ include("ripley.jl")
 using .Ripley
 include("pointcloud.jl")
 using .Pointcloud
-
+include("hdbscan.jl")
+using .HDBSCAN
 ##
 filepath = "./Data/STORM/desmin_alphaactinin_600nm.csv"
 const localization_df = DataFrame(CSV.File(filepath))
 ##
-localization_df.x
-hist(localization_df.z, bins = 100)
-##
-function subset_xy_bounding_box(localization_df::DataFrame, xlim, ylim)
-    selection_criteria_x = (xlim[1] .< localization_df.x .< xlim[2])
-    selection_criteria_y = (ylim[1] .< localization_df.y .< ylim[2])
-    selection_criteria = selection_criteria_x .& selection_criteria_y
-    return localization_df[selection_criteria, :]
-end
 
 function split_dataframe_per_probe(localization_df::DataFrame)
     probes = sort!(Vector(localization_df[:, :probe]))
@@ -41,49 +33,46 @@ function pointcloud_from_dataframe(localization_df::DataFrame)
     return point_cloud
 end
 
-function pointcloud_from_dataframe2d(localization_df::DataFrame)
-    point_cloud = @inbounds @views [SVector{2, Float32}(localization_df[i, [:x, :y]]...) for i = 1:size(localization_df)[1]]
-    return point_cloud
-end
+##
+total_df_list = split_dataframe_per_probe(localization_df)
+total_points = pointcloud_from_dataframe.(total_df_list)
+xlim, ylim = (32500, 37500), (10300, 15300)
+point_clouds = map(x->subset_region(x, xlim, ylim), total_points)
+##
 
-##
-xlim, ylim = (0, 5000), (25500, 30500)
-df = subset_xy_bounding_box(localization_df, xlim, ylim)
-df_list =  split_dataframe_per_probe(df)
-point_clouds = pointcloud_from_dataframe2d.(df_list)
-##
-scatter(point_clouds[2])
 ##
 let
     fig = Figure()
-    df_list = split_dataframe_per_probe(localization_df)
-    point_clouds = pointcloud_from_dataframe2d.(df_list)
+
+    point_clouds_xy = map(x -> projection(x, 3), point_clouds)
     colors = [:red, :green]
-    ax = Axis(fig[1, 1], aspect = 1)
-    for i in 1:length(df_list)
-        
-        scatter!(ax, point_clouds[i], color = colors[i], markersize = 1, transparency = true)
+    ax = Axis(fig[1, 1], aspect = 1, xlabel = "x (nm)", ylabel = "y (nm)", title = "Overlay for for x ∈ $xlim, y ∈ $ylim")
+    for i in 1:length(point_clouds_xy)
+        scatter!(ax, point_clouds_xy[i], color = colors[i], markersize = 2, transparency = true)
     end
 
     fig
 end
 ##
 
-##
 let
-    points = pointcloud_from_dataframe.(df_list)[2]
+    import ColorSchemes
+    points = point_clouds[2]
     fig = Figure()
     ax = Axis3(fig[1, 1])
-    sc = scatter!(ax, points, color = to_abstractmatrix(points)[:,3], markersize = 1000)
-    Colorbar(fig[1, 2], sc)
+    #sc = scatter!(ax, points, color = to_abstractmatrix(points)[:,3], markersize = 1000)
+    scatter!(ax, point_clouds[2], color = to_abstractmatrix(point_clouds[2])[3,:], markersize = 700, colormap = ColorSchemes.winter.colors)
+    scatter!(ax, point_clouds[1], color = to_abstractmatrix(point_clouds[1])[3,:], markersize = 700, colormap = ColorSchemes.autumn1.colors)
+    #Colorbar(fig[1, 2], sc)
     fig
+    
 end
+
 ##
 
 ##
 using Clustering
-import MultivariateStats: PCA, fit, eigvecs
-import Statistics.mean
+
 ##
 
 ptc = PointCloud(point_clouds[2])
@@ -95,10 +84,7 @@ function cluster_coords(points::AbstractVector{T}, cluster::DbscanCluster) where
     return points[indices]
 end
 
-function pca_orientation(points::AbstractVector{T}) where {T<:SVector}
-    PCA_result = fit(PCA, to_abstractmatrix(points))
-    return eigvecs(PCA_result)[:, 1]
-end
+
 ##
 let 
     fig = Figure()
@@ -141,45 +127,92 @@ let
    
 end
 ##
+points_xy = projection(point_clouds[2], 3) 
+output = hdbscan(points_xy, min_cluster_size = 1250, min_samples = 15)
+clusters, _ = get_cluster(point_clouds[2], output)
+
+##
+import Statistics: mean
+import MultivariateStats: PCA, fit, eigvecs
+
+function pca_orientation(points::AbstractVector{T}) where {T<:SVector}
+    PCA_result = fit(PCA, to_abstractmatrix(points))
+    return eigvecs(PCA_result)[:, 1]
+end
+
+centroids = mean.(clusters)
+orientations = map(x-> projection(x, 3) |> pca_orientation, clusters)
+##
 let 
-    import PyCall
-    import ColorSchemes: colorschemes
-    hdbscan = PyCall.pyimport("hdbscan")
-    clusterer = hdbscan.HDBSCAN(min_cluster_size = 1000, min_samples = 10)
-    points = to_abstractmatrix(point_clouds[2]) |> transpose
-    output = clusterer.fit(points)
+    import ColorSchemes: colorschemes, get
+    import Statistics: mean
 
     fig = Figure()
     ax = Axis(fig[1, 1], aspect = 1, xlabel = "x (nm)", ylabel = "y (nm)", title = "Clustering results for x ∈ $xlim, y ∈ $ylim")
-    cluster_labels = output.labels_ .+ 1
-    for i in unique(cluster_labels)
-        clustered = point_clouds[2][cluster_labels .== i]
-        if i == 0
-            scatter!(ax, clustered, color = :gray, markersize = 2)
-        else
-            color = colorschemes[:glasbey_hv_n256][i]
-            scatter!(ax, clustered, markersize = 3)
-        end
+    clusters, noise = get_cluster(point_clouds[2], output)
+    
+    axis = 3
+    scatter!(ax, projection(noise, axis), color = :gray, markersize = 2)
+    for (i, cluster) in enumerate(clusters)
+        
+        clustered = projection(cluster, axis)
+    
+        color = colorschemes[:glasbey_hv_n256][i]
+        scatter!(ax, clustered, markersize = 3)
+
+        centroid = mean(clustered)
+        scatter!(ax, centroid, color = :red, markersize = 9)
+
+        orientation = pca_orientation(clustered)
+        arrow_len = 500
+        arrows!(ax, [centroid[1]], [centroid[2]], [orientation[1]*arrow_len], [orientation[2]*arrow_len], linewidth = 2.0)
+        
     end
     fig
 end
 ##
 let 
-    fig = Figure()
-    ax = Axis(fig[1, 1], aspect = 1)
-    points = to_abstractmatrix(point_clouds[2])
-    clusters = dbscan(points, 240, min_cluster_size = 1000)
-
-    clusters_coords = [cluster_coords(point_clouds[2], c) for c in clusters]
-    avg_orient = map(pca_orientation, clusters_coords) |> mean
+    fig = Figure(resolution = (800, 1000))
+    ax = Axis(fig[1, 1], aspect = 1, xlabel = "x (nm)", ylabel = "y (nm)", title = "x-y plane projection")
     
-    points2_rot = Pointcloud.rotate(point_clouds[2], -atan(avg_orient[2], avg_orient[1]))
-    points2_rot1 = Pointcloud.rotate(point_clouds[1], -atan(avg_orient[2], avg_orient[1]))
-    typeof(points2_rot)
-    plot1 = scatter!(ax, points2_rot, color = :green, markersize = 5, transparency = true)
-    plot2 = scatter!(ax, points2_rot1, color = :red, markersize = 5, transparency = true)
+    avg_yaw = map(x-> projection(x, 3) |> pca_orientation, clusters) |> mean 
+    
+    reorient_points(points) = Pointcloud.rotate(points, -atan(avg_yaw[2], avg_yaw[1]), 0, 0)
+    points2_rot = reorient_points(point_clouds[2])
+    points2_rot1 = reorient_points(point_clouds[1])
+    
+    axis = 3
+    plot1 = scatter!(ax, projection(points2_rot, axis), color = :green, markersize = 5, transparency = true)
+    plot2 = scatter!(ax, projection(points2_rot1, axis), color = :red, markersize = 5, transparency = true)
 
     Legend(fig[1, 2], [plot1, plot2], ["α-actinin", "Desmin"])
+
+   
+    current_figure()
+   
+end
+##
+let 
+    fig = Figure(resolution = (800, 1000))
+    ax = Axis(fig[1, 1], aspect = 1, xlabel = "y (nm)", ylabel = "z (nm)", title = "Projection from the front")
+    
+    avg_yaw = map(x-> projection(x, 3) |> pca_orientation, clusters) |> mean 
+    
+    reorient_points(points) = Pointcloud.rotate(points, -atan(avg_yaw[2], avg_yaw[1]), 0, 0)
+    points2_rot = reorient_points(point_clouds[2])
+    points2_rot1 = reorient_points(point_clouds[1])
+    
+    axis = 1
+    plot1 = scatter!(ax, projection(points2_rot, axis), color = :green, markersize = 5, transparency = true)
+    plot2 = scatter!(ax, projection(points2_rot1, axis), color = :red, markersize = 5, transparency = true)
+
+    Legend(fig[1, 2], [plot1, plot2], ["α-actinin", "Desmin"])
+
+    ax2 = Axis(fig[2, :], xlabel = "Normal direction (nm)", ylabel = "Relative localization counts")
+    hist1 = hist!(ax2, map(x -> getindex(x, 2), projection(points2_rot, 3)), bins = 100, color = (:green, 0.5), normalization = :pdf)
+    hist2 = hist!(ax2, map(x -> getindex(x, 2), projection(points2_rot1, 3)), bins = 100, color = (:red, 0.5), normalization = :pdf)
+    
+   
     current_figure()
    
 end
@@ -234,25 +267,7 @@ bins[i_max]
 ##
 lines(bins, sqrt.(angle_counts))
 ##
-function rotate_point(point::SVector{2}, θ)
-    R = [cos(θ) -sin(θ); sin(θ) cos(θ)]
-    return R*point
-end
 
-rotated_cloud = map(pt -> rotate_point(pt, -(1.9334161376300993-0.5π)), point_clouds[2])
-rotated_cloud1 = map(pt -> rotate_point(pt, -(1.95-0.5π)), point_clouds[1])
-##
-rotated_mat = hcat(rotated_cloud...)
-rotated_mat1 = hcat(rotated_cloud1...)
-scatter(rotated_mat[1,:], rotated_mat[2,:])
-##
-scatter(rotated_mat[1,:], df_list[2].z)
-
-##
-scatter(rotated_mat1[1,:], df_list[1].z)
-##
-hist(rotated_mat[1,:], bins = 100)
-hist!(rotated_mat1[1,:], bins = 100)
 ##
 import StatsBase: fit, Histogram
 function point_to_set_correlation(point_coordinates, set_coordinates, Δr)
@@ -283,7 +298,7 @@ point_set_dist = xy_region_to_point_to_set_distances((25000, 30000), (10000, 150
 distances = collect(0.0:bin_size:(maximum(point_set_dist)+bin_size))
 h = fit(Histogram, point_set_dist, distances, closed=:left)
 ##
-import StatsBase: fit, Histogram
+
 function point_to_set_correlation(point_to_set_distances::Vector{N}, bin_size::N) where {N<:Number}
     distances = collect(0.0:bin_size:(maximum(point_to_set_distances)+bin_size))
     h = fit(Histogram, point_to_set_distances, distances, closed=:left)
