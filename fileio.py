@@ -4,7 +4,8 @@ import numpy as np
 import pandas as pd
 
 ## For manipulating file paths
-STORM_filepaths = {'desmin_alphaactinin_600nm': '2020-08-25-12-24-36 sample2a/particles.dat'
+STORM_filepaths = {'desmin_alphaactinin_600nm': '2017-01-23-10-37-54/particles.csv'
+, 'desmin_alphaactinin_1.2um': '2020-08-25-12-24-36 sample2a/particles.dat'
 , 'actin_desmin_600nm': '2017-03-21-11-31-56/particles.csv'
 , 'actin_desmin_1.2um': '2020-07-28-12-00-44 sample1c desmin568 actin647/particles.dat'
 , 'desmin_actin_2.5um': '2020-07-28-11-45-42 sample1b desmin568 actin647/particles.dat'}

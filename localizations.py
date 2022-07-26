@@ -12,7 +12,7 @@ from pointcloud import *
 
 STORM_data_dir = './Data/STORM'
 #exp_name = 'desmin_alphaactinin_600nm'
-exp_name = 'actin_desmin_600nm'
+exp_name = 'desmin_alphaactinin_600nm'
 cmaps = ['kbc', 'fire']
 exp_filepath = fetch_STORM_experiment_filepath(exp_name, STORM_data_dir)
 
@@ -21,7 +21,7 @@ probe_ids, localization_dfs = get_per_probe_localizations(localization_df)
 #%%
 localization_df.head()
 #%%
-#localization_df.to_csv(f'./Data/STORM/{exp_name}.csv', index = False)
+localization_df.to_csv(f'./Data/STORM/{exp_name}.csv', index = False)
 # %%
 
 point_clouds = [PointCloud3D.from_DataFrame(df, coordinate_labels = ['x', 'y', 'z'], field_labels_map = {'amp': 'Intensity', 'z': 'Z'}) for df in localization_dfs]
