@@ -3,7 +3,7 @@ using Revise
 using GLMakie
 import Pkg
 Pkg.activate(".")
-##
+
 import CSV
 import DataFrames: DataFrame
 using NearestNeighbors
@@ -55,7 +55,8 @@ function point_to_set_correlation(point_to_set_distances::Vector{N}, bin_size::N
 end
 ##
 let
-    ## Code to generate Figure 3a: 600nm Desmin & α-actinin stain overlay
+    using Makie.GeometryBasics
+    ## Code to generate Figure 2a: 600nm Desmin & α-actinin stain overlay
     points = filtered_points_from_path(path_actinin, ["desmin", "actinin"])
     points = Dict(k => Pointcloud.projection(v, 3) for (k, v) in points)
 
@@ -70,18 +71,24 @@ let
     ax2 = Axis(gl2[1, 1]; title="α-actinin", axis_kwargs...)
     ax3 = Axis(gl3[1, 1]; title="Combined", axis_kwargs...)
 
-    scatter_kwargs = Dict(:markersize => 2)
+    scatter_kwargs = Dict(:markersize => 2, :alpha => 0.4)
     scatter!(ax1, points["desmin"]; color=(:red, 0.3), scatter_kwargs...)
     scatter!(ax2, points["actinin"]; color=(:green, 0.3), scatter_kwargs...)
     scatter!(ax3, points["desmin"]; color=(:red, 0.3), scatter_kwargs...)
     scatter!(ax3, points["actinin"]; color=(:green, 0.3), scatter_kwargs...)
 
-    #save("./Figures/Figure 3a.png", fig)
+    xlim, ylim = (14.3, 19.3), (7.0, 12.0)
+    bbox = Point2f[(xlim[1], ylim[1]), (xlim[1], ylim[2]), (xlim[2], ylim[2]), (xlim[2], ylim[1])]
+    for ax in [ax1, ax2, ax3]
+        poly!(ax, bbox, color=:transparent, strokecolor=:grey30, strokewidth=3.0)
+    end
+    #save("./Figures/Figure 2a.png", fig)
     fig
 end
 ##
 let
-    ## Code to generate Figure 3c: 600nm actin & desmin stain overlay
+    using Makie.GeometryBasics
+    ## Code to generate Figure 2c: 600nm actin & desmin stain overlay
     points = filtered_points_from_path(path_actin, ["actin", "desmin"])
     points = Dict(k => Pointcloud.projection(v, 3) for (k, v) in points)
 
@@ -102,7 +109,12 @@ let
     scatter!(ax3, points["desmin"]; color=(:red, 0.3), scatter_kwargs...)
     scatter!(ax3, points["actin"]; color=(:blue, 0.03), scatter_kwargs...)
 
-    save("./Figures/Figure 3b.png", fig)
+    xlim, ylim = (13.5, 18.5), (12.0, 17.0)
+    bbox = Point2f[(xlim[1], ylim[1]), (xlim[1], ylim[2]), (xlim[2], ylim[2]), (xlim[2], ylim[1])]
+    for ax in [ax1, ax2, ax3]
+        poly!(ax, bbox, color=:transparent, strokecolor=:grey20, strokewidth=3.0)
+    end
+    #save("./Figures/Figure 2c.png", fig)
     fig
 end
 ##
@@ -178,26 +190,26 @@ let
     gl2 = fig[1, 2] = GridLayout()
     gl3 = fig[1, 3] = GridLayout()
     axis3_kwargs = Dict(:aspect => (1, 1, 0.3), :elevation => 0.25π, :azimuth => 0.6π)
-
-    ax = Axis3(gl1[1, 1]; title="Overlay: x ∈ $(x_lims[ind]), y ∈ $(y_lims[ind])", axis3_kwargs...)
+    ax = Axis3(gl1[1, 1]; title="Overlay: x ∈ $(x_lims[ind]) μm, y ∈ $(y_lims[ind]) μm", axis3_kwargs...)
 
     ax2 = Axis3(gl2[1, 1]; title="Self clustering map", axis3_kwargs...)
-    scatter!(ax, desmin_inner, color=(:red, 0.5), markersize=1200)
+    scatter!(ax, desmin_inner, color=(:red, 0.5), markersize=4)
 
     L_max = max(maximum(L), maximum(L_cross))
     clims = (0, maximum(L))
-    sc2 = scatter!(ax2, desmin_inner, color=L, markersize=1200, colormap=:Reds, colorrange=clims)
-    Colorbar(gl2[2, 1], sc2, label=L"$L_{desmin}(r = 200)$", vertical=false, flipaxis=false)
+    sc2 = scatter!(ax2, desmin_inner, color=L, markersize=4, colormap=:Reds, colorrange=clims)
+    Colorbar(gl2[2, 1], sc2, label=L"$L_{desmin} (r = 200)$", vertical=false, flipaxis=false)
 
     ax3 = Axis3(gl3[1, 1]; title="Colocalization map", axis3_kwargs...)
-    sc3 = scatter!(ax3, desmin_inner, color=L_cross, markersize=1200, colormap=:Reds, colorrange=clims)
-    Colorbar(gl3[2, 1], sc3, label=L"$L_{desmin/α-actinin}(r = 200)$", vertical=false, flipaxis=false)
+    sc3 = scatter!(ax3, desmin_inner, color=L_cross, markersize=4, colormap=:Reds, colorrange=clims)
+    Colorbar(gl3[2, 1], sc3, label=L"$L_{desmin/α-actinin} (r = 200)$", vertical=false, flipaxis=false)
     #Colorbar(fig[1, 2], sc)
     for ax_ in [ax, ax2, ax3]
-        scatter!(ax_, points_roi["actinin"], color=(:green, 0.5), markersize=600)
+        scatter!(ax_, points_roi["actinin"], color=(:green, 0.5), markersize=2)
         ax_.zticks = -0.3:0.3:0.3
     end
-    save("./actinin_L_3D_$(ind).png", fig)
+    #save("./Figures/Figure 2b.png", fig)
+    #save("./actinin_L_3D_$(ind).png", fig)
     fig
 end
 ##
@@ -220,28 +232,29 @@ let
     gl1 = fig[1, 1] = GridLayout()
     gl2 = fig[1, 2] = GridLayout()
     gl3 = fig[1, 3] = GridLayout()
-    axis3_kwargs = Dict(:aspect => (1, 1, 0.3), :elevation => 0.25π, :azimuth => 0.6π)
+    axis3_kwargs = Dict(:aspect => (1, 1, 0.3), :elevation => 0.25π, :azimuth => 0.65π)
 
     ax = Axis3(gl1[1, 1]; title="Overlay: x ∈ $(x_lims[ind]), y ∈ $(y_lims[ind])", axis3_kwargs...)
     #sc = scatter!(ax, points, color = to_abstractmatrix(points)[:,3], markersize = 1000)
 
     ax2 = Axis3(gl2[1, 1]; title="Self clustering map", axis3_kwargs...)
-    scatter!(ax, desmin_inner, color=(:red, 0.5), markersize=1200)
+    scatter!(ax, desmin_inner, color=(:red, 0.5), markersize=4)
 
     L_max = max(maximum(L), maximum(L_cross))
     clims = (0, maximum(L))
-    sc2 = scatter!(ax2, desmin_inner, color=L, markersize=1200, colormap=:Reds, colorrange=clims)
-    Colorbar(gl2[2, 1], sc2, label=L"L(200)", vertical=false, flipaxis=false)
+    sc2 = scatter!(ax2, desmin_inner, color=L, markersize=4, colormap=:Reds, colorrange=clims)
+    Colorbar(gl2[2, 1], sc2, label=L"L_{desmin}(r = 200)", vertical=false, flipaxis=false)
 
     ax3 = Axis3(gl3[1, 1]; title="Colocalization map", axis3_kwargs...)
-    sc3 = scatter!(ax3, desmin_inner, color=L_cross, markersize=1200, colormap=:Reds, colorrange=clims)
-    Colorbar(gl3[2, 1], sc3, label=L"L_{cross}(200)", vertical=false, flipaxis=false)
+    sc3 = scatter!(ax3, desmin_inner, color=L_cross, markersize=4, colormap=:Reds, colorrange=clims)
+    Colorbar(gl3[2, 1], sc3, label=L"L_{desmin/actin}(r = 200)", vertical=false, flipaxis=false)
     #Colorbar(fig[1, 2], sc)
     for ax_ in [ax, ax2, ax3]
-        scatter!(ax_, points_roi["actin"], color=(:blue, 0.3), markersize=600)
+        scatter!(ax_, points_roi["actin"], color=(:blue, 0.3), markersize=1.5)
         ax_.zticks = -0.3:0.3:0.3
     end
-    save("./actin_L_3D_$(ind).png", fig)
+    #save("./Figures/Figure 2d.png", fig)
+    #save("./actin_L_3D_$(ind).png", fig)
     fig
 end
 ##
@@ -311,3 +324,59 @@ let
     #save("./Fig 2_actin_point2set.png", fig)
 end
 ##
+let
+    points = filtered_points_from_path(path_actinin, ["desmin", "actinin"])
+
+    x_lims = [(1.5, 6.5), (6.7, 11.7), (12.0, 17.0), (14.3, 19.3), (11.8, 16.8), (7.2, 12.2), (0.8, 5.8)]
+    y_lims = [(0.5, 5.5), (2.0, 7.0), (1.5, 6.5), (7.0, 12.0), (12.5, 17.5), (7.3, 12.3), (6.5, 11.5)]
+    z_lims = [(-0.2, 0.4), (-0.2, 0.4), (-0.2, 0.4), (-0.15, 0.45), (-0.15, 0.45), (-0.18, 0.42), (-0.24, 0.36)]
+
+    point_set_dist_list = @showprogress [region_to_point_to_set_distances(x_lim, y_lim, z_lim, points, set_index="actinin", point_index="desmin") for (x_lim, y_lim, z_lim) in zip(x_lims, y_lims, z_lims)]
+
+    bin_size = 10.0f0
+    p_to_s_corr_list = @showprogress [point_to_set_correlation(p_t_s_dist * 1000, bin_size) for p_t_s_dist in point_set_dist_list]
+
+    total_dists = cat(point_set_dist_list..., dims=1)
+    total_corr = point_to_set_correlation(total_dists, bin_size)
+
+    fig = Figure(resolution=(1000, 600))
+    ax1 = GLMakie.Axis(fig[1, 1], title="Point-to-Set correlation function: Δr = $(bin_size)nm", xlabel="Distance (nm)", ylabel="Correlation (a.u.)")
+
+    r = collect(0.0:bin_size:1000)[1:end-1]
+
+    means_ = [mean(output) for output in zip(p_to_s_corr_list...)]
+    stds_ = [std(output) for output in zip(p_to_s_corr_list...)]
+
+    band!(ax1, r, means_ - stds_, means_ + stds_, color=(:green, 0.25), transparancy=:true)
+    lines!(ax1, r, means_, color=:green, linewidth=3.0, label="desmin - α-actinin")
+    ax1.xticks = LinearTicks(10)
+
+    filtered_points = filtered_points_from_path(path_actin, ["actin", "desmin"])
+
+    x_lims = [(2.5, 7.5), (8.0, 13.0), (13.5, 18.5), (13.5, 18.5), (7.0, 12.0), (13.5, 18.5)]
+    y_lims = [(1.0, 6.0), (1.0, 6.0), (1.0, 6.0), (6.5, 11.5), (6.5, 11.5), (12.0, 17.0)]
+    z_lims = [(-0.3, 0.3), (-0.3, 0.3), (-0.3, 0.3), (-0.3, 0.3), (-0.3, 0.3), (-0.3, 0.3)]
+
+    point_set_dist_list = @showprogress [region_to_point_to_set_distances(x_lim, y_lim, z_lim, filtered_points, set_index="actin", point_index="desmin") for (x_lim, y_lim, z_lim) in zip(x_lims, y_lims, z_lims)]
+
+    bin_size = 10.0f0
+    p_to_s_corr_list = @showprogress [point_to_set_correlation(p_t_s_dist * 1000, bin_size) for p_t_s_dist in point_set_dist_list]
+
+    total_dists = cat(point_set_dist_list..., dims=1)
+    total_corr = point_to_set_correlation(total_dists, bin_size)
+
+    r = collect(0.0:bin_size:1000)[1:end-1]
+
+    means_ = [mean(output) for output in zip(p_to_s_corr_list...)]
+    stds_ = [std(output) for output in zip(p_to_s_corr_list...)]
+
+    band!(ax1, r, means_ - stds_, means_ + stds_, color=(:blue, 0.25), transparancy=:true)
+    lines!(ax1, r, means_, color=:blue, linewidth=3.0, label="desmin - actin")
+    ax1.xticks = LinearTicks(10)
+    #scatterlines!(ax2, distances[1:end-1], h.weights)
+    Legend(fig[1, 2], ax1)
+
+    fig
+    #save("./Figures/Figure 2e.png", fig)
+
+end

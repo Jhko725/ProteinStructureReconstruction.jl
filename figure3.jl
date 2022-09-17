@@ -195,31 +195,37 @@ let
 
     points = Dict(k => Pointcloud.subset_region(v, (0.0, 40.0), (0.0, 40.0), (-2.5, 0.0)) for (k, v) in points)
 
-    fig = Figure(resolution=(1200, 800))
+    fig = Figure(resolution=(1400, 650))
     kwargs = Dict(:aspect => 1, :xlabel => "x (μm)", :ylabel => "y (μm)")
-    scatter_kwargs = Dict{Symbol,Any}(:markersize => 2, :transparency => true)
+    scatter_kwargs = Dict{Symbol,Any}(:markersize => 1, :transparency => true)
 
     x_lim, y_lim = (20.0, 30.0), (5.0, 15.0)
-    gl = fig[1, 1] = GridLayout()
+    gl0 = fig[1, 1] = GridLayout()
+    ax0 = Axis(gl0[1, 1], aspect=1)
+    scatter!(ax0, points["desmin"]; color=(:red, 0.2), scatter_kwargs...)
+    scatter!(ax0, points["actinin"]; color=(:green, 0.2), scatter_kwargs...)
+    bbox = Point2f[(x_lim[1], y_lim[1]), (x_lim[1], y_lim[2]), (x_lim[2], y_lim[2]), (x_lim[2], y_lim[1])]
+    poly!(ax0, bbox, color=:transparent, strokecolor=:grey30, strokewidth=3.0)
 
+    gl = fig[1, 2:3] = GridLayout()
     for (i, z_lim) in enumerate([(-1.5, -0.9), (-1.8, -0.6), (-2.5, 0.0)])
         points_roi = Dict(k => Pointcloud.subset_region(v, x_lim, y_lim, z_lim) for (k, v) in points)
         points_2d = Dict(k => Pointcloud.projection(v, 3) for (k, v) in points_roi)
         z_coords = Dict(k => map(x -> x[3], v) for (k, v) in points_roi)
-        
-        ax_desmin = Axis(gl[1, i]; title = "$(round(z_lim[2]-z_lim[1], digits = 1))μm slice", kwargs...)
+
+        ax_desmin = Axis(gl[1, i]; title="$(round(z_lim[2]-z_lim[1], digits = 1))μm slice", kwargs...)
         ax_actinin = Axis(gl[2, i]; kwargs...)
 
-        sc1 = scatter!(ax_desmin, points_2d["desmin"], color = z_coords["desmin"], colormap = :linear_kry_0_97_c73_n256, colorrange = (-2.5, 0.0); scatter_kwargs...)
-        sc2 = scatter!(ax_actinin, points_2d["actinin"], color = z_coords["actinin"], colormap = :linear_kgy_5_95_c69_n256, colorrange = (-2.5, 0.0); scatter_kwargs...)
-        
+        sc1 = scatter!(ax_desmin, points_2d["desmin"], color=z_coords["desmin"], colormap=:linear_kry_0_97_c73_n256, colorrange=(-2.5, 0.0); scatter_kwargs...)
+        sc2 = scatter!(ax_actinin, points_2d["actinin"], color=z_coords["actinin"], colormap=:linear_kgy_5_95_c69_n256, colorrange=(-2.5, 0.0); scatter_kwargs...)
+
         hide_kwargs = Dict(:grid => false)
         hidedecorations!(ax_desmin; hide_kwargs...)
         if i != 1
             hidedecorations!(ax_actinin; hide_kwargs...)
         else
-            Colorbar(gl[1, 4], sc1, label = "desmin z (μm)")
-            Colorbar(gl[2, 4], sc2, label = "α-actinin z (μm)")
+            Colorbar(gl[1, 4], sc1, label="desmin z (μm)")
+            Colorbar(gl[2, 4], sc2, label="α-actinin z (μm)")
         end
 
         for ax_ in [ax_desmin, ax_actinin]
@@ -228,7 +234,7 @@ let
         end
 
     end
-    
+
     colgap!(gl, 15)
     rowgap!(gl, 15)
     #save("./Figures/Figure 3b.png", fig)
@@ -255,8 +261,8 @@ let
         ax_desmin = Axis3(fig[1, i]; kwargs...)
         ax_actinin = Axis3(fig[2, i]; kwargs...)
 
-        scatter!(ax_desmin, desmin_points, color = (color_dict["desmin"], 0.3); scatter_kwargs...)
-        scatter!(ax_actinin, actinin_points, color = (color_dict["actinin"], 0.3); scatter_kwargs...)
+        scatter!(ax_desmin, desmin_points, color=(color_dict["desmin"], 0.3); scatter_kwargs...)
+        scatter!(ax_actinin, actinin_points, color=(color_dict["actinin"], 0.3); scatter_kwargs...)
 
     end
 
@@ -285,7 +291,7 @@ let
         end
         ax.xticks = 0:π/4:2π
         ax.xtickformat = xs -> ["$(x/pi)π" for x in xs]
-     end
+    end
 
     #save("./angular_ripley_$(ind).png", fig)
     fig
