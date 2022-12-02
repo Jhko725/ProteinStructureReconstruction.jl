@@ -1,6 +1,6 @@
 ##
 using Revise
-using GLMakie
+using WGLMakie
 import Pkg
 Pkg.activate(".")
 ##
@@ -21,10 +21,16 @@ using .HDBSCAN
 include("utils.jl")
 ##
 const path_actinin = "./Data/STORM/desmin_alphaactinin_600nm.csv"
-const path_actin = "./Data/STORM/actin_desmin_600nm.csv"
+const path_actin = "./Data/STORM/actin_desmin_1.2um.csv"
 const color_dict = Dict(zip(["desmin", "actinin", "actin"], [:red, :green, :blue]))
-
-
+##
+path = "./Data/STORM/desmin_alphaactinin_2.5um.csv"
+points_df = path |> CSV.File |> DataFrame |> split_dataframe_per_probe
+points_list = pointcloud_from_dataframe.(points_df)
+points_dict = Dict(zip(["desmin", "actinin"], points_list))
+total = hcat([reduce(hcat, v) for v in values(points_dict)]...)
+print(maximum(total, dims=2) - minimum(total, dims=2))
+##
 points_list = path_actinin |> CSV.File |> DataFrame |> split_dataframe_per_probe
 points_list = pointcloud_from_dataframe.(points_list)
 points_dict = Dict(zip(["desmin", "actinin"], points_list))

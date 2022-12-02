@@ -2,8 +2,9 @@
 using Revise
 using GLMakie
 import Pkg
+using Makie.GeometryBasics
 Pkg.activate(".")
-##
+
 import CSV
 import DataFrames: DataFrame
 using NearestNeighbors
@@ -74,9 +75,9 @@ let
     fig
 end
 ##
-### Code to generate Figure 3a
+
 let
-    import Statistics: std
+    ## Figure 3a ##
     points = filtered_points_from_path(path_actinin, ["desmin", "actinin"])
     #points = points_from_path(path_actinin, ["desmin", "actinin"])
 
@@ -109,23 +110,35 @@ let
         H_act .= circshift(H_act, -max_ind)
     end
 
-    fig = Figure(resolution=(800, 400))
-    gl = fig[1, 1] = GridLayout()
-    ax = Axis(gl[1, 1], xlabel="θ (rad)", ylabel="H(θ)", title="Averaged 2D angular Ripleys function: r = 2.0μm")
+    fig = Figure(resolution=(1200, 400))
+    gl1 = fig[1, 1] = GridLayout()
+    ax1 = Axis(gl1[1, 1], xlabel="x (μm)", ylabel="y (μm)", aspect=1)
+
+    for (name, points) in points
+        scatter!(ax1, points, color=(color_dict[name], 0.25), markersize=1, transparency=true)
+    end
+
+    for (x_lim, y_lim) in zip(x_lims, y_lims)
+        bbox = Point2f[(x_lim[1], y_lim[1]), (x_lim[1], y_lim[2]), (x_lim[2], y_lim[2]), (x_lim[2], y_lim[1])]
+        poly!(ax1, bbox, color=:transparent, strokecolor=:grey30, strokewidth=2.0)
+    end
+
+    gl2 = fig[1, 2:3] = GridLayout()
+    ax2 = Axis(gl2[1, 1:2], xlabel="θ (rad)", ylabel="H(θ; r = 2μm)")
 
     for (name, H_list, color) in zip(["desmin", "α-actinin"], [H_desmin_list, H_actinin_list], [:red, :green])
         means_ = [mean(output) for output in zip(H_list...)]
         stds_ = [std(output) for output in zip(H_list...)]
 
-        band!(ax, angles, means_ - stds_, means_ + stds_, color=(color, 0.25), transparancy=:true)
-        lines!(ax, angles, means_, color=(color, 0.75), label=name, linewidth=3)
+        band!(ax2, angles, means_ - stds_, means_ + stds_, color=(color, 0.25), transparancy=:true)
+        lines!(ax2, angles, means_, color=(color, 0.75), label=name, linewidth=3)
     end
 
-    ax.xticks = 0:π/4:2π
-    ax.xtickformat = xs -> ["$(x/pi)π" for x in xs]
-    gl[1, 2] = Legend(fig, ax)
+    ax2.xticks = 0:π/4:2π
+    ax2.xtickformat = xs -> ["$(x/pi)π" for x in xs]
+    Legend(gl2[1, 3], ax2)
 
-    #save("./Figures/Figure 4a.png", fig)
+    #save("./Figures/Figure 3a.png", fig)
     fig
 end
 ##
@@ -189,6 +202,7 @@ let
 end
 ##
 let
+    ## Figure 3b ##
     #path = "./Data/STORM/actin_desmin_1.2um.csv"
     path = "./Data/STORM/desmin_alphaactinin_2.5um.csv"
     points = filtered_points_from_path(path, ["desmin", "actinin"])

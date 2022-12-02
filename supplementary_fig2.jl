@@ -3,7 +3,7 @@ using Revise
 using GLMakie
 import Pkg
 Pkg.activate(".")
-##
+
 import CSV
 import DataFrames: DataFrame
 using Makie.GeometryBasics
@@ -45,7 +45,7 @@ let
 
     rects = []
     for (x_lim, y_lim) in zip(x_lims, y_lims)
-        rect = poly!(ax1, Rect(x_lim[1], y_lim[1], 5, 5))
+        rect = poly!(ax1, Rect(x_lim[1], y_lim[1], 5, 5), color=:transparent, strokewidth=2.0)
         push!(rects, rect)
     end
     Legend(gl[1, 2], rects, ["ROI #$(i)" for i in 1:length(rects)])
@@ -101,7 +101,7 @@ let
 
     rects = []
     for (x_lim, y_lim) in zip(x_lims, y_lims)
-        rect = poly!(ax1, Rect(x_lim[1], y_lim[1], 5, 5))
+        rect = poly!(ax1, Rect(x_lim[1], y_lim[1], 5, 5), color=:transparent, strokecolor=:grey30, strokewidth=2.0)
         push!(rects, rect)
     end
     Legend(gl[1, 2], rects, ["ROI #$(i)" for i in 1:length(rects)])
