@@ -1,9 +1,9 @@
 ##
 using Revise
-using GLMakie
 import Pkg
 Pkg.activate(".")
 
+using CairoMakie
 import CSV
 import DataFrames: DataFrame
 using NearestNeighbors
@@ -11,6 +11,8 @@ import StatsBase: fit, Histogram
 import Statistics: mean, std
 import LinearAlgebra: normalize
 using ProgressMeter
+
+Makie.inline!(true)
 
 include("ripley.jl")
 using .Ripley
@@ -20,8 +22,8 @@ include("hdbscan.jl")
 using .HDBSCAN
 include("utils.jl")
 
-const path_actinin = "./Data/STORM/desmin_alphaactinin_600nm.csv"
-const path_actin = "./Data/STORM/actin_desmin_600nm.csv"
+const path_actinin = "./data/STORM/desmin_alphaactinin_600nm.csv"
+const path_actin = "./data/STORM/actin_desmin_600nm.csv"
 const color_dict = Dict(zip(["desmin", "actinin", "actin"], [:red, :green, :blue]))
 
 function points_from_path(filepath::String, channel_names::Vector{String})
@@ -82,8 +84,8 @@ let
     for ax in [ax1, ax2, ax3]
         poly!(ax, bbox, color=:transparent, strokecolor=:grey30, strokewidth=3.0)
     end
-    #save("./Figures/Figure 2a.png", fig)
-    fig
+    save("./figures/Figure 2a.png", fig)
+    current_figure()
 end
 ##
 let
@@ -114,8 +116,8 @@ let
     for ax in [ax1, ax2, ax3]
         poly!(ax, bbox, color=:transparent, strokecolor=:grey20, strokewidth=3.0)
     end
-    #save("./Figures/Figure 2c.png", fig)
-    fig
+    #save("./figures/Figure 2c.png", fig)
+    current_figure()
 end
 ##
 
@@ -208,7 +210,7 @@ let
         scatter!(ax_, points_roi["actinin"], color=(:green, 0.5), markersize=2)
         ax_.zticks = -0.3:0.3:0.3
     end
-    #save("./Figures/Figure 2b.png", fig)
+    #save("./figures/Figure 2b.png", fig)
     #save("./actinin_L_3D_$(ind).png", fig)
     fig
 end
@@ -253,7 +255,7 @@ let
         scatter!(ax_, points_roi["actin"], color=(:blue, 0.3), markersize=1.5)
         ax_.zticks = -0.3:0.3:0.3
     end
-    #save("./Figures/Figure 2d.png", fig)
+    #save("./figures/Figure 2d.png", fig)
     #save("./actin_L_3D_$(ind).png", fig)
     fig
 end
@@ -377,6 +379,6 @@ let
     Legend(fig[1, 2], ax1)
 
     fig
-    #save("./Figures/Figure 2e.png", fig)
+    #save("./figures/Figure 2e.png", fig)
 
 end
