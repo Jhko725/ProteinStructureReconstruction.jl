@@ -37,7 +37,7 @@ def scramble_image(
     img: Float[ArrayLike, " *dims"],
     chunk_size: tuple[int, ...],
     key: PRNGKeyArray,
-):
+) -> Float[Array, " *dims"]:
     """
     Given a tuple of integers specifying chunk sizes to use when scrambling the image,
     return a scrambled version of the image.

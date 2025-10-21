@@ -65,8 +65,10 @@ def colocalization_costes(
         return pearson_r(x, y, mask)
 
     # Compute Pearson r for each threshold, and find the zero crossing point
-    r_vals = jax.vmap(thresholded_correlation)(thresholds)
-    idx_crossing = jnp.argmax(jnp.abs(r_vals) <= eps)
+    r_vals = jax.vmap(thresholded_correlation)(thresholds[:-1])
+    idx_crossing = jnp.argmax(
+        jnp.concatenate((jnp.abs(r_vals) <= eps, jnp.asarray([True])))
+    )
     thres_optimal = thresholds[idx_crossing]
     r_thres = r_vals[idx_crossing]
 
