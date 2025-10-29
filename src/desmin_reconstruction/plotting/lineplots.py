@@ -3,7 +3,7 @@ import numpy as np
 from jaxtyping import Float
 
 
-def plot_line_and_band(
+def line_and_bandplot(
     ax: plt.Axes,
     x: Float[np.ndarray, " N"],
     y: Float[np.ndarray, " N"],

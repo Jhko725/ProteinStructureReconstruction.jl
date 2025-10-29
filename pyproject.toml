@@ -27,6 +27,7 @@ dependencies = [
     "scipy>=1.16",
     "tqdm>=4.67.1",
     "trame>=3.10.1",
+    "xarray>=2025.9.0",
 ]
 
 [project.scripts]
