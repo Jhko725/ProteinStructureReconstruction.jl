@@ -18,6 +18,10 @@ class BoundingSquare:
     def y1(self) -> float:
         return self.y0 + self.side
 
+    @property
+    def area(self) -> float:
+        return self.side * self.side
+
 
 def filter_bounded(
     points: Float[np.ndarray, "N dim"], bound: BoundingSquare

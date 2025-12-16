@@ -80,6 +80,7 @@ def align_patch(
     data: dict[str, Float[np.ndarray, "?N 3"]],
     tilt_sweep_values: np.ndarray = np.arange(-5, 5, 0.001),
     rotation_sweep_values: np.ndarray = np.arange(-3, 3, 0.1),
+    clustering_species: str = "actinin",
     **clustering_kwargs,
 ):
     """A convenience function that performs `calibrate_tilt` and
@@ -89,7 +90,9 @@ def align_patch(
     tilt_calibration_fn, tilt_metrics = calibrate_tilt(points_all, tilt_sweep_values)
 
     rotation_fn, clustering_metric = find_optimal_clustering_angle(
-        tilt_calibration_fn(data["actinin"]), rotation_sweep_values, **clustering_kwargs
+        tilt_calibration_fn(data[clustering_species]),
+        rotation_sweep_values,
+        **clustering_kwargs,
     )
 
     transform_fn = lambda pts: rotation_fn(tilt_calibration_fn(pts))
