@@ -23,6 +23,7 @@ dependencies = [
     "ipykernel>=6.29.5",
     "jax[cuda12]>=0.8.0",
     "jaxtyping>=0.3.2",
+    "kneed>=0.8.6",
     "matplotlib>=3.10.3",
     "numpy>=2.2.6",
     "ott-jax>=0.6.0",
